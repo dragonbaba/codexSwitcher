@@ -1,0 +1,89 @@
+// Types matching the Rust backend
+
+export type AuthMode = "api_key" | "chat_gpt";
+
+export interface AccountInfo {
+  id: string;
+  name: string;
+  email: string | null;
+  plan_type: string | null;
+  auth_mode: AuthMode;
+  is_active: boolean;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface UsageInfo {
+  account_id: string;
+  plan_type: string | null;
+  primary_used_percent: number | null;
+  primary_window_minutes: number | null;
+  primary_resets_at: number | null;
+  secondary_used_percent: number | null;
+  secondary_window_minutes: number | null;
+  secondary_resets_at: number | null;
+  has_credits: boolean | null;
+  unlimited_credits: boolean | null;
+  credits_balance: string | null;
+  error: string | null;
+}
+
+export interface OAuthLoginInfo {
+  auth_url: string;
+  callback_port: number;
+}
+
+export type WorkspaceAuthStatus = "matched" | "unmatched" | "missing" | "invalid";
+
+export interface WorkspaceAuthState {
+  path: string;
+  exists: boolean;
+  status: WorkspaceAuthStatus;
+  auth_mode: AuthMode | null;
+  matched_account_id: string | null;
+  matched_account_name: string | null;
+  active_account_id: string | null;
+  active_account_name: string | null;
+  active_matches_live: boolean;
+  email: string | null;
+  plan_type: string | null;
+  error: string | null;
+}
+
+export interface SwitchAccountResult {
+  success: boolean;
+  target_account_id: string;
+  target_account_name: string;
+  backup_created: boolean;
+  backup_path: string | null;
+  rolled_back: boolean;
+  killed_processes: number;
+  workspace_before: WorkspaceAuthState;
+  workspace_after: WorkspaceAuthState;
+  error: string | null;
+}
+
+export interface AccountWithUsage extends AccountInfo {
+  usage?: UsageInfo;
+  usageLoading?: boolean;
+}
+
+export interface CodexProcessInfo {
+  count: number;
+  background_count: number;
+  blocking_count: number;
+  can_switch: boolean;
+  pids: number[];
+}
+
+export interface WarmupSummary {
+  total_accounts: number;
+  warmed_accounts: number;
+  failed_account_ids: string[];
+}
+
+export interface ImportAccountsSummary {
+  total_in_payload: number;
+  imported_count: number;
+  skipped_count: number;
+}
