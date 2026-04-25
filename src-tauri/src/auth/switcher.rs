@@ -288,7 +288,7 @@ fn write_auth_json_to_path(path: &Path, auth_json: &AuthDotJson) -> Result<()> {
     }
 
     let content =
-        serde_json::to_string_pretty(auth_json).context("Failed to serialize auth.json")?;
+        serde_json::to_string(auth_json).context("Failed to serialize auth.json")?;
 
     fs::write(path, content)
         .with_context(|| format!("Failed to write auth.json: {}", path.display()))?;

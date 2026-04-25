@@ -1,6 +1,8 @@
 //! Process detection commands
 
 use std::process::Command;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use anyhow::Context;
 
@@ -12,6 +14,9 @@ use std::os::windows::process::CommandExt;
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+static PROCESS_CACHE: Mutex<Option<(Instant, CodexProcessInfo)>> = Mutex::new(None);
+const PROCESS_CACHE_TTL: Duration = Duration::from_secs(3);
 
 #[cfg(windows)]
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -51,17 +56,33 @@ struct DetectedCodexProcesses {
 /// Check for running Codex processes
 #[tauri::command]
 pub async fn check_codex_processes() -> Result<CodexProcessInfo, String> {
+    {
+        if let Ok(cache) = PROCESS_CACHE.lock() {
+            if let Some((ts, info)) = cache.as_ref() {
+                if ts.elapsed() < PROCESS_CACHE_TTL {
+                    return Ok(info.clone());
+                }
+            }
+        }
+    }
+
     let detected = find_codex_processes().map_err(|e| e.to_string())?;
     let count = detected.active_pids.len();
     let blocking_count = detected.blocking_pids.len();
 
-    Ok(CodexProcessInfo {
+    let info = CodexProcessInfo {
         count,
         background_count: detected.background_count,
         blocking_count,
         can_switch: blocking_count == 0,
         pids: detected.active_pids,
-    })
+    };
+
+    if let Ok(mut cache) = PROCESS_CACHE.lock() {
+        *cache = Some((Instant::now(), info.clone()));
+    }
+
+    Ok(info)
 }
 
 /// Find all running codex processes.

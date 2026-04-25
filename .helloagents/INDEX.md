@@ -1,13 +1,14 @@
 # 项目知识库
 
-- 项目名称: codex-switcher
+- 项目名称: codex-account-switcher
 - 知识库状态: active
-- 项目类型: 桌面应用 / Tauri + React
+- 项目类型: 桌面应用 / Tauri + React / Windows only
 - 主要目标: 管理多个 Codex / ChatGPT 账号并切换本地 `~/.codex/auth.json`
+- 当前版本: 0.4.0
 
 ## 当前关注
 
-- 优化多账号配置与快速切换体验
-- 增强当前激活账号状态展示
-- 为切换流程补充校验、备份与回退能力
-- 补充使用说明与切换约束说明
+- 独立仓库运营，移除 updater 依赖
+- 性能优化：内存缓存、轮询合并、代码分割
+- UI 深色仪表盘重设计，绿色强调色 + Fira 字体
+- CI 精简为仅 Windows 构建

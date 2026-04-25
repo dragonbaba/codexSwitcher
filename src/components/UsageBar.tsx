@@ -47,34 +47,34 @@ function RateLimitBar({
   windowMinutes?: number | null;
   resetsAt?: number | null;
 }) {
-  // Calculate remaining percentage
   const remainingPercent = Math.max(0, 100 - usedPercent);
-  
-  // Color based on remaining (green = plenty left, red = almost none left)
+
   const colorClass =
     remainingPercent <= 10
       ? "bg-red-500"
       : remainingPercent <= 30
         ? "bg-amber-500"
-        : "bg-emerald-500";
+        : "bg-green-500";
 
   const windowLabel = formatWindowDuration(windowMinutes);
   const resetLabel = formatResetTime(resetsAt);
   const exactResetLabel = formatExactResetTime(resetsAt);
 
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs text-gray-500">
-        <span>{label} {windowLabel && `(${windowLabel})`}</span>
-        <span>
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-[10px]">
+        <span className="text-slate-500">
+          {label} {windowLabel && `(${windowLabel})`}
+        </span>
+        <span className="text-slate-400">
           剩余 {remainingPercent.toFixed(0)}%
-          {resetLabel && ` • ${resetLabel}后重置`}
+          {resetLabel && ` · ${resetLabel}后`}
           {resetLabel && exactResetLabel && ` (${exactResetLabel})`}
         </span>
       </div>
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
         <div
-          className={`h-full transition-all duration-300 ${colorClass}`}
+          className={`h-full rounded-full transition-all duration-500 ${colorClass}`}
           style={{ width: `${Math.min(remainingPercent, 100)}%` }}
         ></div>
       </div>
@@ -85,15 +85,15 @@ function RateLimitBar({
 export function UsageBar({ usage, loading }: UsageBarProps) {
   if (loading && !usage) {
     return (
-      <div className="space-y-2">
-        <div className="text-xs text-gray-400 italic animate-pulse">
-          正在获取额度...
+      <div className="space-y-2.5">
+        <div className="text-xs text-slate-500 animate-pulse">
+          获取额度中...
         </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden animate-pulse">
-          <div className="h-full w-2/3 bg-gray-200"></div>
+        <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden animate-pulse">
+          <div className="h-full w-2/3 bg-slate-600"></div>
         </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden animate-pulse">
-          <div className="h-full w-1/2 bg-gray-200"></div>
+        <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden animate-pulse">
+          <div className="h-full w-1/2 bg-slate-600"></div>
         </div>
       </div>
     );
@@ -101,15 +101,15 @@ export function UsageBar({ usage, loading }: UsageBarProps) {
 
   if (!usage) {
     return (
-      <div className="text-xs text-gray-400 italic py-1 animate-pulse">
-        正在获取额度...
+      <div className="text-xs text-slate-500 py-1 animate-pulse">
+        获取额度中...
       </div>
     );
   }
 
   if (usage.error) {
     return (
-      <div className="text-xs text-gray-400 italic py-1">
+      <div className="text-xs text-slate-500 py-1">
         {usage.error}
       </div>
     );
@@ -120,17 +120,17 @@ export function UsageBar({ usage, loading }: UsageBarProps) {
 
   if (!hasPrimary && !hasSecondary) {
     return (
-      <div className="text-xs text-gray-400 italic py-1">
+      <div className="text-xs text-slate-500 py-1">
         暂无额度数据
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {hasPrimary && (
         <RateLimitBar
-          label="5 小时额度"
+          label="5小时额度"
           usedPercent={usage.primary_used_percent!}
           windowMinutes={usage.primary_window_minutes}
           resetsAt={usage.primary_resets_at}
@@ -145,7 +145,7 @@ export function UsageBar({ usage, loading }: UsageBarProps) {
         />
       )}
       {usage.credits_balance && (
-        <div className="text-xs text-gray-500">
+        <div className="text-[10px] text-slate-500 mt-1">
           积分：{usage.credits_balance}
         </div>
       )}

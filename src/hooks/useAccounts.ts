@@ -356,14 +356,9 @@ export function useAccounts() {
       void refreshUsage().catch(() => {});
     }, 60000);
 
-    const workspaceInterval = window.setInterval(() => {
-      void loadWorkspaceAuthState();
-    }, 8000);
-
     return () => {
       cancelled = true;
       window.clearInterval(usageInterval);
-      window.clearInterval(workspaceInterval);
     };
   }, [loadAccounts, loadWorkspaceAuthState, refreshUsage]);
 

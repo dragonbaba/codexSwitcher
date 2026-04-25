@@ -2,10 +2,18 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{OnceLock, RwLock};
 
 use anyhow::{Context, Result};
 
 use crate::types::{AccountsStore, AuthData, StoredAccount};
+
+static STORE_CACHE: OnceLock<RwLock<AccountsStore>> = OnceLock::new();
+static CACHE_INITIALIZED: OnceLock<()> = OnceLock::new();
+
+fn cache() -> &'static RwLock<AccountsStore> {
+    STORE_CACHE.get_or_init(|| RwLock::new(AccountsStore::default()))
+}
 
 /// Get the path to the codex-switcher config directory
 pub fn get_config_dir() -> Result<PathBuf> {
@@ -18,8 +26,8 @@ pub fn get_accounts_file() -> Result<PathBuf> {
     Ok(get_config_dir()?.join("accounts.json"))
 }
 
-/// Load the accounts store from disk
-pub fn load_accounts() -> Result<AccountsStore> {
+/// Load the accounts store from disk (raw, no cache)
+fn read_accounts_from_disk() -> Result<AccountsStore> {
     let path = get_accounts_file()?;
 
     if !path.exists() {
@@ -35,28 +43,53 @@ pub fn load_accounts() -> Result<AccountsStore> {
     Ok(store)
 }
 
-/// Save the accounts store to disk
+/// Initialize the in-memory cache from disk (call once at startup)
+pub fn init_cache() -> Result<()> {
+    let store = read_accounts_from_disk()?;
+    if let Ok(mut guard) = cache().write() {
+        *guard = store;
+    }
+    let _ = CACHE_INITIALIZED.set(());
+    Ok(())
+}
+
+/// Load the accounts store from cache (falls back to disk if cache not initialized)
+pub fn load_accounts() -> Result<AccountsStore> {
+    if CACHE_INITIALIZED.get().is_some() {
+        if let Ok(guard) = cache().read() {
+            return Ok(guard.clone());
+        }
+    }
+    read_accounts_from_disk()
+}
+
+/// Save the accounts store to disk (also updates cache if available)
 pub fn save_accounts(store: &AccountsStore) -> Result<()> {
     let path = get_accounts_file()?;
 
-    // Ensure the config directory exists
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create config directory: {}", parent.display()))?;
     }
 
     let content =
-        serde_json::to_string_pretty(store).context("Failed to serialize accounts store")?;
+        serde_json::to_string(store).context("Failed to serialize accounts store")?;
 
     fs::write(&path, content)
         .with_context(|| format!("Failed to write accounts file: {}", path.display()))?;
 
-    // Set restrictive permissions on Unix
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = fs::Permissions::from_mode(0o600);
         fs::set_permissions(&path, perms)?;
+    }
+
+    // Update cache if initialized
+    if let Some(cache) = STORE_CACHE.get() {
+        if let Ok(mut guard) = cache.try_write() {
+            *guard = store.clone();
+        }
     }
 
     Ok(())

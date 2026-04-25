@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "tauri": "bunx tauri",
     "tauri:dev": "bunx tauri dev",
-    "tauri:build": "bunx tauri build --config '{\"bundle\":{\"createUpdaterArtifacts\":false}}'",
+    "tauri:build": "bunx tauri build",
     "tauri:build:signed": "bunx tauri build",
     "lan": "bun run build && cargo run --manifest-path src-tauri/Cargo.toml --bin codex-web",
     "version:bump": "node scripts/bump-version.mjs",
@@ -24,7 +24,6 @@
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2",
-    "@tauri-apps/plugin-updater": "^2.10.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

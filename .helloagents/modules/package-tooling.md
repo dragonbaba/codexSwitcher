@@ -2,15 +2,18 @@
 
 ## 职责
 
-- 管理前端依赖安装、构建命令和 CI 中的 Node 侧工具链。
+- 管理前端依赖安装、构建命令和 CI 配置。
 
 ## 行为规范
 
-- 仓库当前统一使用 `bun` 作为前端依赖管理器。
-- 仓库当前对外品牌名为 `codex-account-switcher`，README、包名、Tauri 产品名和版本脚本需要保持一致。
-- `package.json`、`tauri.conf.json`、README 和 GitHub Actions 中的前端命令保持一致。
-- 独立仓库版本不再默认指向上游仓库的 updater/release 地址，发布端点需要由新仓库单独配置。
-- `pnpm-lock.yaml` 不再作为主锁文件，锁文件以 `bun.lock` 为准。
+- 前端依赖管理器统一使用 `bun`。
+- 项目对外品牌名为 `codex-account-switcher`。
+- `package.json`、`tauri.conf.json`、README 和 GitHub Actions 保持一致。
+- **已完全移除 Tauri updater 插件**：删除 `@tauri-apps/plugin-updater` (npm)、`tauri-plugin-updater` (Cargo)、updater 配置段、权限 `updater:default`、CI 签名密钥和 updater JSON 产物。
+- **CI 仅构建 Windows x86_64**：移除 macOS/Linux 矩阵，单 `windows-latest` 任务。
+- **Vite 代码分割**：vendor 分块 (React/ReactDOM) + tauri 分块 (Tauri 插件) + 应用主代码。
+- **tokio features 精简**：`full` → `rt-multi-thread,sync,time,macros`。
+- `bun.lock` 为唯一锁文件。
 
 ## 依赖关系
 

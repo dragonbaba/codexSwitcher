@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccountCard,
   AddAccountModal,
-  UpdateChecker,
   WorkspaceStatusPanel,
 } from "./components";
 import { useAccounts } from "./hooks/useAccounts";
@@ -134,10 +133,10 @@ function App() {
   useEffect(() => {
     void checkProcesses();
     const interval = window.setInterval(() => {
-      void checkProcesses();
-    }, 3000);
+      void Promise.all([checkProcesses(), loadWorkspaceAuthState()]);
+    }, 5000);
     return () => window.clearInterval(interval);
-  }, [checkProcesses]);
+  }, [checkProcesses, loadWorkspaceAuthState]);
 
   useEffect(() => {
     loadMaskedAccountIds().then((ids) => {
@@ -344,9 +343,15 @@ function App() {
     }
   };
 
-  const activeAccount = accounts.find((account) => account.is_active);
+  const activeAccount = useMemo(
+    () => accounts.find((account) => account.is_active),
+    [accounts]
+  );
   const liveAccountId = workspaceAuth?.matched_account_id ?? null;
-  const otherAccounts = accounts.filter((account) => !account.is_active);
+  const otherAccounts = useMemo(
+    () => accounts.filter((account) => !account.is_active),
+    [accounts]
+  );
   const hasRunningProcesses = Boolean(processInfo && processInfo.count > 0);
   const hasBlockingProcesses = Boolean(processInfo && processInfo.blocking_count > 0);
 
@@ -392,31 +397,33 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[var(--app-bg)] text-slate-100">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/75 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#0b1121]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/15 font-semibold text-emerald-200">
-              CS
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-green-500/25 bg-green-500/12">
+              <svg className="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold tracking-tight text-white">Codex Account Switcher</h1>
+                <h1 className="text-lg font-semibold tracking-tight text-slate-50">Codex Account Switcher</h1>
                 {processInfo && (
                   <span
-                    className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.2em] ${
+                    className={`rounded-full border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.15em] ${
                       hasRunningProcesses
-                        ? "border-amber-400/35 bg-amber-400/12 text-amber-100"
-                        : "border-sky-400/35 bg-sky-400/12 text-sky-100"
+                        ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                        : "border-green-500/30 bg-green-500/10 text-green-200"
                     }`}
                   >
                     {hasRunningProcesses
-                      ? `检测到 ${processInfo.count} 个 Codex 进程`
-                      : "未检测到 Codex 进程"}
+                      ? `${processInfo.count} Codex`
+                      : "空闲"}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-slate-400">
-                用于管理 Codex 与 ChatGPT 登录态的多账号切换面板
+              <p className="text-xs text-slate-500">
+                多账号切换面板
               </p>
             </div>
           </div>
@@ -424,21 +431,26 @@ function App() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={toggleMaskAll}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-200 transition-colors hover:bg-white/10"
+              className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-slate-600 hover:bg-slate-700/80 hover:text-slate-100 cursor-pointer"
             >
               {allMasked ? "显示全部" : "隐藏全部"}
             </button>
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-200 transition-colors hover:bg-white/10 disabled:opacity-50"
+              className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-slate-600 hover:bg-slate-700/80 hover:text-slate-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isRefreshing ? "刷新中..." : "刷新全部"}
+              <span className={`inline-flex items-center gap-1.5 ${isRefreshing ? "animate-spin" : ""}`}>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {isRefreshing ? "刷新中..." : "刷新全部"}
+              </span>
             </button>
             <button
               onClick={handleWarmupAll}
               disabled={isWarmingAll || accounts.length === 0}
-              className="rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-2.5 text-sm text-amber-100 transition-colors hover:bg-amber-300/15 disabled:opacity-50"
+              className="rounded-xl border border-amber-600/25 bg-amber-500/8 px-4 py-2 text-sm font-medium text-amber-200 transition-all duration-200 hover:border-amber-500/35 hover:bg-amber-500/12 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isWarmingAll ? "预热中..." : "全部预热"}
             </button>
@@ -446,21 +458,21 @@ function App() {
             <div className="relative" ref={actionsMenuRef}>
               <button
                 onClick={() => setIsActionsMenuOpen((prev) => !prev)}
-                className="rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-300"
+                className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-slate-950 transition-all duration-200 hover:bg-green-400 cursor-pointer"
               >
                 账号操作 ▾
               </button>
               {isActionsMenuOpen && (
-                <div className="absolute right-0 z-50 mt-2 w-60 rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
+                <div className="absolute right-0 z-50 mt-2 w-56 rounded-2xl border border-slate-700/80 bg-slate-900 p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
                   <button
                     onClick={() => openAddAccountModal("oauth")}
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-white/8"
+                    className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-200 transition-all duration-150 hover:bg-slate-800 cursor-pointer"
                   >
-                    + 添加账号
+                    添加账号
                   </button>
                   <button
                     onClick={() => openAddAccountModal("current")}
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-white/8"
+                    className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-200 transition-all duration-150 hover:bg-slate-800 cursor-pointer"
                   >
                     导入当前 Auth
                   </button>
@@ -470,7 +482,7 @@ function App() {
                       void handleExportSlimText();
                     }}
                     disabled={isExportingSlim}
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-white/8 disabled:opacity-50"
+                    className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-200 transition-all duration-150 hover:bg-slate-800 cursor-pointer disabled:opacity-50"
                   >
                     {isExportingSlim ? "导出中..." : "导出精简文本"}
                   </button>
@@ -484,7 +496,7 @@ function App() {
                       setIsConfigModalOpen(true);
                     }}
                     disabled={isImportingSlim}
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-white/8 disabled:opacity-50"
+                    className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-200 transition-all duration-150 hover:bg-slate-800 cursor-pointer disabled:opacity-50"
                   >
                     导入精简文本
                   </button>
@@ -494,7 +506,7 @@ function App() {
                       void handleExportFullFile();
                     }}
                     disabled={isExportingFull}
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-white/8 disabled:opacity-50"
+                    className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-200 transition-all duration-150 hover:bg-slate-800 cursor-pointer disabled:opacity-50"
                   >
                     {isExportingFull ? "导出中..." : "导出完整加密文件"}
                   </button>
@@ -504,7 +516,7 @@ function App() {
                       void handleImportFullFile();
                     }}
                     disabled={isImportingFull}
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-white/8 disabled:opacity-50"
+                    className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-200 transition-all duration-150 hover:bg-slate-800 cursor-pointer disabled:opacity-50"
                   >
                     {isImportingFull ? "导入中..." : "导入完整加密文件"}
                   </button>
@@ -527,37 +539,37 @@ function App() {
             onCaptureCurrent={() => openAddAccountModal("current")}
           />
 
-          <UpdateChecker />
-
           {loading && accounts.length === 0 ? (
-            <div className="rounded-[1.8rem] border border-white/10 bg-slate-900/60 px-6 py-16 text-center">
-              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
-              <p className="text-slate-300">正在加载账号...</p>
+            <div className="rounded-[1.8rem] border border-slate-800 bg-slate-900/50 px-6 py-16 text-center">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
+              <p className="text-slate-400">正在加载账号...</p>
             </div>
           ) : error ? (
-            <div className="rounded-[1.8rem] border border-rose-400/20 bg-rose-400/8 px-6 py-16 text-center">
-              <div className="mb-2 text-rose-200">加载账号失败</div>
-              <p className="text-sm text-rose-100/80">{error}</p>
+            <div className="rounded-[1.8rem] border border-red-500/20 bg-red-500/5 px-6 py-16 text-center">
+              <div className="mb-2 text-red-300">加载账号失败</div>
+              <p className="text-sm text-red-200/80">{error}</p>
             </div>
           ) : accounts.length === 0 ? (
-            <div className="rounded-[1.8rem] border border-white/10 bg-slate-900/55 px-6 py-16 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/5 text-3xl">
-                👤
+            <div className="rounded-[1.8rem] border border-slate-800 bg-slate-900/50 px-6 py-16 text-center">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-slate-700 bg-slate-800/60">
+                <svg className="h-8 w-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
               </div>
-              <h2 className="text-2xl font-semibold text-white">还没有托管账号</h2>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-400">
+              <h2 className="text-xl font-semibold text-slate-100">还没有托管账号</h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
                 添加你的第一个账号，或导入当前工作区 auth，即可在同一个面板中切换 GPT 账号。
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <button
                   onClick={() => openAddAccountModal("oauth")}
-                  className="rounded-xl bg-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-300"
+                  className="rounded-xl bg-green-500 px-5 py-3 text-sm font-semibold text-slate-950 transition-all duration-200 hover:bg-green-400 cursor-pointer"
                 >
                   添加账号
                 </button>
                 <button
                   onClick={() => openAddAccountModal("current")}
-                  className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-200 transition-colors hover:bg-white/10"
+                  className="rounded-xl border border-slate-700 bg-slate-800/60 px-5 py-3 text-sm font-medium text-slate-200 transition-all duration-200 hover:border-slate-600 hover:bg-slate-700/80 cursor-pointer"
                 >
                   导入当前 Auth
                 </button>
@@ -569,13 +581,13 @@ function App() {
                 <section>
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                        应用激活
+                      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
+                        当前激活
                       </p>
-                      <h2 className="mt-1 text-2xl font-semibold text-white">
+                      <h2 className="mt-1 text-lg font-semibold text-slate-200">
                         {workspaceAuth?.active_matches_live
-                          ? "当前激活账号与实时工作区一致。"
-                          : "应用激活态与实时工作区存在差异。"}
+                          ? "激活账号与实时工作区一致"
+                          : "激活态与实时工作区存在差异"}
                       </h2>
                     </div>
                   </div>
@@ -600,16 +612,16 @@ function App() {
                 <section>
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
                         待切换账号
                       </p>
-                      <h2 className="mt-1 text-2xl font-semibold text-white">
-                        对比剩余额度，并在校验后切换账号。
+                      <h2 className="mt-1 text-lg font-semibold text-slate-200">
+                        对比剩余额度，在校验后切换账号
                       </h2>
                     </div>
 
-                    <label className="flex items-center gap-3 text-sm text-slate-400">
-                      <span>排序</span>
+                    <label className="flex items-center gap-2.5 text-sm text-slate-400">
+                      <span className="text-xs text-slate-500">排序</span>
                       <select
                         value={otherAccountsSort}
                         onChange={(event) =>
@@ -621,7 +633,7 @@ function App() {
                               | "remaining_asc"
                           )
                         }
-                        className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none"
+                        className="rounded-xl border border-slate-700 bg-slate-800/70 px-3 py-2 text-sm text-slate-200 focus:border-green-500 focus:outline-none cursor-pointer"
                       >
                         <option value="deadline_asc">重置时间：从早到晚</option>
                         <option value="deadline_desc">重置时间：从晚到早</option>
@@ -661,10 +673,10 @@ function App() {
 
       {toast && (
         <div
-          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl border px-4 py-3 text-sm shadow-2xl ${
+          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl border px-5 py-3 text-sm font-medium shadow-[0_20px_60px_rgba(0,0,0,0.5)] transition-all duration-300 ${
             toast.isError
-              ? "border-rose-400/25 bg-rose-600 text-white"
-              : "border-emerald-400/20 bg-slate-950 text-emerald-100"
+              ? "border-red-500/30 bg-red-600/95 text-white"
+              : "border-green-500/30 bg-slate-900/95 text-green-100"
           }`}
         >
           {toast.message}
@@ -672,44 +684,49 @@ function App() {
       )}
 
       {deleteConfirmId && (
-        <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-rose-400/25 bg-rose-600 px-4 py-3 text-sm text-white shadow-2xl">
+        <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-red-500/30 bg-red-600/95 px-5 py-3 text-sm font-medium text-white shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
           再点一次删除以确认移除。
         </div>
       )}
 
-      <AddAccountModal
-        isOpen={isAddModalOpen}
-        initialTab={addModalTab}
-        onClose={() => setIsAddModalOpen(false)}
-        onImportFile={importFromFile}
-        onImportCurrentAuth={handleCaptureCurrentAuth}
-        onStartOAuth={startOAuthLogin}
-        onCompleteOAuth={completeOAuthLogin}
-        onCancelOAuth={cancelOAuthLogin}
-      />
+      {isAddModalOpen && (
+        <AddAccountModal
+          key={`add-account-${addModalTab}-${Date.now()}`}
+          isOpen={isAddModalOpen}
+          initialTab={addModalTab}
+          onClose={() => setIsAddModalOpen(false)}
+          onImportFile={importFromFile}
+          onImportCurrentAuth={handleCaptureCurrentAuth}
+          onStartOAuth={startOAuthLogin}
+          onCompleteOAuth={completeOAuthLogin}
+          onCancelOAuth={cancelOAuthLogin}
+        />
+      )}
 
       {isConfigModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
-          <div className="w-full max-w-2xl rounded-[1.8rem] border border-white/10 bg-slate-950 text-slate-100 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 p-5">
-              <h2 className="text-lg font-semibold text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center justify-between border-b border-slate-800 p-5">
+              <h2 className="text-lg font-semibold text-slate-100">
                 {configModalMode === "slim_export" ? "导出精简文本" : "导入精简文本"}
               </h2>
               <button
                 onClick={() => setIsConfigModalOpen(false)}
-                className="text-slate-400 transition-colors hover:text-white"
+                className="text-slate-500 hover:text-slate-200 transition-colors cursor-pointer p-1 rounded-lg hover:bg-slate-800"
               >
-                ✕
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
             <div className="space-y-4 p-5">
               {configModalMode === "slim_import" ? (
-                <p className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+                <p className="rounded-xl border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-sm text-amber-200">
                   现有账号会被保留，仅导入缺失的账号。
                 </p>
               ) : (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-slate-500">
                   这段精简文本包含账号密钥，请妥善保管。
                 </p>
               )}
@@ -725,20 +742,20 @@ function App() {
                       : "导出的字符串会显示在这里"
                     : "请在这里粘贴配置字符串"
                 }
-                className="h-52 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 font-mono text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+                className="h-52 w-full rounded-2xl border border-slate-700 bg-slate-800/50 px-4 py-3 font-mono text-sm text-slate-100 placeholder:text-slate-500 focus:border-green-500 focus:outline-none"
               />
 
               {configModalError && (
-                <div className="rounded-xl border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-sm text-rose-100">
+                <div className="rounded-xl border border-red-500/20 bg-red-500/8 px-3 py-2 text-sm text-red-200">
                   {configModalError}
                 </div>
               )}
             </div>
 
-            <div className="flex gap-3 border-t border-white/10 p-5">
+            <div className="flex gap-3 border-t border-slate-800 p-5">
               <button
                 onClick={() => setIsConfigModalOpen(false)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-200 transition-colors hover:bg-white/10"
+                className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-sm font-medium text-slate-300 transition-all duration-200 hover:border-slate-600 hover:bg-slate-700/80 cursor-pointer"
               >
                 关闭
               </button>
@@ -756,7 +773,7 @@ function App() {
                     }
                   }}
                   disabled={!configPayload || isExportingSlim}
-                  className="rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-300 disabled:opacity-50"
+                  className="rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition-all duration-200 hover:bg-green-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {configCopied ? "已复制" : "复制字符串"}
                 </button>
@@ -764,7 +781,7 @@ function App() {
                 <button
                   onClick={handleImportSlimText}
                   disabled={isImportingSlim}
-                  className="rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-300 disabled:opacity-50"
+                  className="rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition-all duration-200 hover:bg-green-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isImportingSlim ? "导入中..." : "导入缺失账号"}
                 </button>
